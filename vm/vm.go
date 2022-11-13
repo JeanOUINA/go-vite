@@ -17,6 +17,7 @@ import (
 	"github.com/vitelabs/go-vite/v2/common/upgrade"
 	"github.com/vitelabs/go-vite/v2/interfaces"
 	ledger "github.com/vitelabs/go-vite/v2/interfaces/core"
+	"github.com/vitelabs/go-vite/v2/ledger/contract_responses"
 	"github.com/vitelabs/go-vite/v2/log15"
 	"github.com/vitelabs/go-vite/v2/monitor"
 	"github.com/vitelabs/go-vite/v2/vm/abi"
@@ -416,6 +417,18 @@ func (vm *VM) receiveCreate(db interfaces.VmDb, block *ledger.AccountBlock, send
 	}
 	vm.revert(db)
 
+	if err == util.ErrExecutionReverted {
+		contract_responses.ContractResponsesInstance.SetResponse(
+			sendBlock.Hash[:],
+			[]byte(code),
+		)
+	} else {
+		contract_responses.ContractResponsesInstance.SetResponse(
+			sendBlock.Hash[:],
+			[]byte(err.Error()),
+		)
+	}
+
 	// try refund
 	vm.updateBlock(db, block, err, 0, 0)
 	if sendBlock.Amount.Sign() > 0 {
@@ -602,12 +615,16 @@ func (vm *VM) receiveCall(db interfaces.VmDb, block *ledger.AccountBlock, sendBl
 	_, code := util.GetContractCode(db, &block.AccountAddress, nil)
 	c := newContract(block, db, sendBlock, sendBlock.Data, quotaLeft)
 	c.setCallCode(block.AccountAddress, code)
-	_, err = c.run(vm)
+	res, err := c.run(vm)
 	if err == nil {
 		qStakeUsed, qUsed := util.CalcQuotaUsed(true, quotaTotal, quotaAddition, c.quotaLeft, nil)
 		vm.updateBlock(db, block, err, qStakeUsed, qUsed)
 		db, err = vm.doSendBlockList(db)
 		if err == nil {
+			contract_responses.ContractResponsesInstance.SetResponse(
+				sendBlock.Hash[:],
+				res,
+			)
 			block.Data = getReceiveCallData(db, err)
 			return mergeReceiveBlock(db, block, vm.sendBlockList), noRetry, nil
 		}
@@ -618,6 +635,18 @@ func (vm *VM) receiveCall(db interfaces.VmDb, block *ledger.AccountBlock, sendBl
 	}
 
 	vm.revert(db)
+
+	if err == util.ErrExecutionReverted {
+		contract_responses.ContractResponsesInstance.SetResponse(
+			sendBlock.Hash[:],
+			[]byte(res),
+		)
+	} else {
+		contract_responses.ContractResponsesInstance.SetResponse(
+			sendBlock.Hash[:],
+			[]byte(err.Error()),
+		)
+	}
 
 	if err == util.ErrOutOfQuota {
 		unConfirmedList := db.GetUnconfirmedBlocks(*db.Address())

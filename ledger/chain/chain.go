@@ -23,6 +23,7 @@ import (
 	chain_plugins "github.com/vitelabs/go-vite/v2/ledger/chain/plugins"
 	chain_state "github.com/vitelabs/go-vite/v2/ledger/chain/state"
 	"github.com/vitelabs/go-vite/v2/ledger/chain/sync_cache"
+	"github.com/vitelabs/go-vite/v2/ledger/contract_responses"
 	"github.com/vitelabs/go-vite/v2/log15"
 )
 
@@ -290,6 +291,13 @@ func (c *chain) newDbAndRecover() error {
 			return cErr
 		}
 		c.Register(c.plugins)
+	}
+
+	// init contract responses
+	if _, err = contract_responses.NewContractResponses(c.em.chain.chainDir); err != nil {
+		cErr := fmt.Errorf("chain_plugins.NewContractResponses failed. Error: %s", err)
+		c.log.Error(cErr.Error(), "method", "newDbAndRecover")
+		return cErr
 	}
 
 	// new flusher

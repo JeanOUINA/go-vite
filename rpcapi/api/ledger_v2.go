@@ -10,6 +10,7 @@ import (
 	ledger "github.com/vitelabs/go-vite/v2/interfaces/core"
 	"github.com/vitelabs/go-vite/v2/ledger/chain"
 	chain_plugins "github.com/vitelabs/go-vite/v2/ledger/chain/plugins"
+	"github.com/vitelabs/go-vite/v2/ledger/contract_responses"
 	"github.com/vitelabs/go-vite/v2/vm"
 	"github.com/vitelabs/go-vite/v2/vm/contracts/dex"
 	"github.com/vitelabs/go-vite/v2/vm/quota"
@@ -137,7 +138,7 @@ func (l *LedgerApi) GetAccountBlocksByAddress(addr types.Address, index int, cou
 
 // GetAccountBlocksByHeightRange [start,end] sorted by height desc
 func (l *LedgerApi) GetAccountBlocksByHeightRange(addr types.Address, start uint64, end uint64) ([]*AccountBlock, error) {
-	if end - start > 1000 {
+	if end-start > 1000 {
 		return nil, fmt.Errorf("height range must be less than 1000")
 	}
 
@@ -350,7 +351,7 @@ func (l *LedgerApi) GetUnreceivedTransactionSummaryInBatch(addressList []types.A
 	}
 
 	resultList := make([]*AccountInfo, 0)
-	for addr, _ := range addrMap {
+	for addr := range addrMap {
 		info, err := l.GetUnreceivedTransactionSummaryByAddress(addr)
 		if err != nil {
 			return nil, err
@@ -703,12 +704,12 @@ func (l *LedgerApi) GetChunksV2(startHeight interface{}, endHeight interface{}) 
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if startHeightUint64 > endHeightUint64 {
 		return nil, fmt.Errorf("startHeight must be less than endHeight")
 	}
 
-	if endHeightUint64 - startHeightUint64 > 1000 {
+	if endHeightUint64-startHeightUint64 > 1000 {
 		return nil, fmt.Errorf("height range must be less than 1000")
 	}
 
@@ -727,4 +728,21 @@ func (l *LedgerApi) GetChunksV2(startHeight interface{}, endHeight interface{}) 
 
 func (l LedgerApi) GetUpgradeInfo() (interface{}, error) {
 	return upgrade.GetAllPoints(), nil
+}
+
+func (l LedgerApi) GetContractResponse(blockHash types.Hash) ([]byte, error) {
+	block, err := l.GetAccountBlockByHash(blockHash)
+	if err != nil {
+		return nil, err
+	}
+	if block == nil {
+		return []byte(nil), nil
+	}
+	sendHash := block.Hash
+	if block.BlockType == ledger.BlockTypeReceive || block.BlockType == ledger.BlockTypeReceiveError || block.BlockType == ledger.BlockTypeGenesisReceive {
+		sendHash = block.SendBlockHash
+	}
+	return contract_responses.ContractResponsesInstance.GetResponse(
+		sendHash[:],
+	)
 }
