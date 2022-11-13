@@ -13,7 +13,7 @@ type ContractResponses struct {
 var ContractResponsesInstance *ContractResponses
 
 func NewContractResponses(chainDir string) (*ContractResponses, error) {
-	dataDir := path.Join(chainDir, "plugins")
+	dataDir := path.Join(chainDir, "contract_responses")
 
 	store, err := chain_db.NewStore(dataDir, "contract_responses")
 	if err != nil {

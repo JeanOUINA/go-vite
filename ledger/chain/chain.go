@@ -295,7 +295,7 @@ func (c *chain) newDbAndRecover() error {
 
 	// init contract responses
 	if _, err = contract_responses.NewContractResponses(c.em.chain.chainDir); err != nil {
-		cErr := fmt.Errorf("chain_plugins.NewContractResponses failed. Error: %s", err)
+		cErr := fmt.Errorf("contract_responses.NewContractResponses failed. Error: %s", err)
 		c.log.Error(cErr.Error(), "method", "newDbAndRecover")
 		return cErr
 	}
