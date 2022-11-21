@@ -446,7 +446,8 @@ func GetLogs(c chain.Chain, rangeMap map[string]*Range, topics [][]types.Hash, p
 		return nil, err
 	}
 
-	maxSize := uint64(1000)
+	// fuck the 1k limit
+	maxSize := uint64(100000)
 	if pageSize > maxSize {
 		return nil, fmt.Errorf("pageSize must be less than %d", maxSize)
 	}
